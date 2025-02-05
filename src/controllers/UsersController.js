@@ -5,7 +5,11 @@ const AppError = require('../utils/AppError')
 
 class UsersController {
     async create(req, res) {
-        const { name, email, password } = req.body
+        const { name, email, password, role = "customer" } = req.body
+
+        if(role !== "customer" && role !== "admin"){
+            throw new AppError('Acesso do usuário inválido.', 400)
+        }
 
         if (!name || !email || !password) {
             throw new AppError('Email e/ou senha incorreto(a)', 401)
@@ -19,7 +23,7 @@ class UsersController {
 
         const hashedPasswod = await hash(password, 8)
 
-        await knex("users").insert({ name, email, password: hashedPasswod })
+        await knex("users").insert({ name, email, password: hashedPasswod, role })
 
         return res.status(201).json()
     }

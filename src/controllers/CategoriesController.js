@@ -5,20 +5,19 @@ const AppError = require('../utils/AppError')
 class CategoriesController {
     async create(req, res) {
         const { name } = req.body
-        const user_id = req.user.id
 
         if (!name) {
             throw new AppError('O nome da categoria é obrigatório.', 400)
         }
 
-        const checkCategoryNameIsUsed = await knex('categories').where({ name, user_id }).first()
+        const checkCategoryNameIsUsed = await knex('categories').where({ name }).first()
 
         if (checkCategoryNameIsUsed) {
             throw new AppError('Já existe uma categoria com este nome.', 409)
         }
 
         try {
-            await knex('categories').insert({ name, user_id })
+            await knex('categories').insert({ name })
         }
         catch (e) {
             console.error(e)
@@ -68,7 +67,7 @@ class CategoriesController {
     async show(req, res) {
         const { id } = req.params
 
-        const category = await knex('categories').where({ id, user_id: req.user.id }).first()
+        const category = await knex('categories').where({ id }).first()
 
         return res.json(category)
     }

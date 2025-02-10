@@ -1,15 +1,14 @@
-const { interpolators } = require('sharp')
 const knex = require('../database/knex')
 
 const AppError = require('../utils/AppError')
 
 class DishesController {
     async create(req, res) {
-        const { name, category, ingredients, price, description } = req.body
+        const { name, category: category_id, ingredients, price, description } = req.body
 
         const user_id = req.user.id
 
-        if (!name || !category || !ingredients || !price || !description) {
+        if (!name || !category_id || !price || !description) {
             throw new AppError('Todos os campos são obrigatórios', 400)
         }
 
@@ -19,7 +18,7 @@ class DishesController {
             throw new AppError('Já existe um prato com este nome', 409)
         }
 
-        const [dish_id] = await knex("dishes").insert({ name, category, price, description, user_id })
+        const [dish_id] = await knex("dishes").insert({ name, price, description, user_id, category_id })
 
         if (ingredients?.length > 0) {
             const ingredientsInsert = ingredients.map(ingredient => {
@@ -31,7 +30,7 @@ class DishesController {
             })
             await knex("ingredients").insert(ingredientsInsert)
         }
-        return res.status(201).json()
+        return res.status(201).json({ dish_id })
     }
 
     async index(req, res) {
@@ -41,21 +40,24 @@ class DishesController {
 
         let dishes
 
-        if (ingredients) {
+        if (ingredients && title) {
             const filterIngredients = ingredients.split(',').map(ingredients => ingredients.trim())
 
             dishes = await knex("dishes")
                 .innerJoin('ingredients', 'dishes.id', 'ingredients.dish_id')
-                .where("dishes.user_id", user_id)
+                // .where("dishes.user_id", user_id)
                 .whereLike("dishes.name", `%${title}%`)
                 .whereIn('ingredients.name', filterIngredients)
                 .groupBy('dishes.id')
                 .select('dishes.*')
 
+        } else if (title) {
+            dishes = await knex("dishes")
+                // .where({ user_id })
+                .whereLike("name", `%${title}%`)
         } else {
             dishes = await knex("dishes")
-                .where({ user_id })
-                .whereLike("name", `%${title}%`)
+            // .where({ user_id })
         }
 
         const userIngredients = await knex("ingredients").where({ user_id })
@@ -68,21 +70,20 @@ class DishesController {
                 ingredients: dishIngredients
             }
         })
+
         return res.json(dishesWithIngredients)
     }
 
     async show(req, res) {
-        const user_id = req.user.id
-
         const dish_id = req.params.id
 
-        const dish = await knex("dishes").where({ user_id, id: dish_id }).first()
+        const dish = await knex("dishes").where({ id: dish_id }).first()
 
         if (!dish) {
             throw new AppError('Prato não encontrado', 404)
         }
 
-        const ingredients = await knex("ingredients").where({ user_id, dish_id })
+        const ingredients = await knex("ingredients").where({ dish_id })
 
         dish.ingredients = ingredients
 
@@ -94,9 +95,9 @@ class DishesController {
 
         const dish_id = req.params.id
 
-        const { name, category, ingredients, price, description } = req.body
+        const { name, category: category_id, ingredients, price, description } = req.body
 
-        if (!name || !category || !ingredients || !price || !description) {
+        if (!name || !category_id || !ingredients || !price || !description) {
             throw new AppError('Todos os campos são obrigatórios', 404)
         }
 
@@ -107,23 +108,16 @@ class DishesController {
         }
 
         dish.name = name ?? dish.name
-        dish.category = category ?? dish.category
+        dish.category_id = category_id ?? dish.category_id
         dish.price = price ?? dish.price
         dish.description = description ?? dish.description
 
         const old_ingredients = await knex("ingredients").where({ user_id, dish_id })
         const old_ingredients_names = old_ingredients.map(old_ingredient => old_ingredient.name)
 
-        console.log(ingredients)
-        console.log(old_ingredients_names)
-
         const ingredientsToAdd = ingredients.filter(ingredient => !old_ingredients_names.includes(ingredient))
 
-        console.log(ingredientsToAdd)
-
         const ingredientsToRemove = old_ingredients_names.filter(old_ingredient => !ingredients.includes(old_ingredient))
-
-        console.log(ingredientsToRemove)
 
         if (ingredientsToAdd.length > 0) {
             await knex("ingredients").insert(ingredientsToAdd.map(ingredient => {
@@ -136,7 +130,7 @@ class DishesController {
         }
 
         if (ingredientsToRemove.length > 0) {
-            await knex("ingredients").where({dish_id, user_id}).whereIn('name', ingredientsToRemove).delete()
+            await knex("ingredients").where({ dish_id, user_id }).whereIn('name', ingredientsToRemove).delete()
         }
 
         await knex("dishes").where({ user_id, id: dish_id }).update(dish)

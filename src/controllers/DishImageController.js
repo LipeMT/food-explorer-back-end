@@ -4,11 +4,9 @@ const DiskStorage = require('../providers/DiskStorage')
 
 class DishImageController{
     async update(req, res){
-        const user_id = req.user.id
         const avatarFileName = req.file.filename
 
         const dish_id  = req.params.id
-        console.log(dish_id)
 
         const diskStorage = new DiskStorage()
 

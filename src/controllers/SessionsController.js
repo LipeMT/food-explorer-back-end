@@ -8,7 +8,7 @@ const { sign } = require('jsonwebtoken')
 
 class SessionsController {
     async create(req, res) {
-        const { email, password } = req.body
+        const { email, password, name } = req.body
 
         const user = await knex('users').where({ email }).first()   
 
@@ -35,10 +35,15 @@ class SessionsController {
             httpOnly: true,
             sameSite: "none",
             secure: true,
-            maxAge: 15 * 60 *1000,
+            maxAge: 150 * 60 *1000,
         })
 
         return res.status(201).json({ user })
+    }
+
+    async delete(req, res){
+        res.clearCookie("token");
+        return res.status(204).send();
     }
 }
 

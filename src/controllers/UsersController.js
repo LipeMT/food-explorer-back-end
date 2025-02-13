@@ -7,6 +7,10 @@ class UsersController {
     async create(req, res) {
         const { name, email, password, role = "customer" } = req.body
 
+        if(password.length < 6){
+            throw new AppError('A senha precisa ter no mínimo 6 caracteres', 400)
+        }
+
         if(role !== "customer" && role !== "admin"){
             throw new AppError('Acesso do usuário inválido.', 400)
         }

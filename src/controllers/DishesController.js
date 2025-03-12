@@ -1,9 +1,10 @@
-const knex = require('../database/knex')
-
+const { default: mongoose } = require('mongoose')
+const Category = require('../models/Category')
+const Dish = require('../models/Dish')
 const AppError = require('../utils/AppError')
 
 class DishesController {
-    async create(req, res) {    
+    async create(req, res) {
         const { name, category: category_id, ingredients, price, description } = req.body
 
         const user_id = req.user.id
@@ -12,89 +13,44 @@ class DishesController {
             throw new AppError('Todos os campos são obrigatórios', 400)
         }
 
-        const checkDishNameIsUsed = await knex("dishes").where({ name }).first()
+        const checkDishNameIsUsed = await Dish.findOne({ name })
 
         if (checkDishNameIsUsed) {
             throw new AppError('Já existe um prato com este nome', 409)
         }
 
-        const checkCategoryExists = await knex("categories").where({id: category_id})
+        const checkCategoryExists = await Category.findOne({ _id: category_id })
 
-        if(checkCategoryExists.length == 0){
+        if (!checkCategoryExists) {
             throw new AppError('Esta categoria não existe', 404)
         }
+        const newDish = await Dish.create({ name, price, description, ingredients, user_id, category_id })
 
-        const [dish_id] = await knex("dishes").insert({ name, price, description, user_id, category_id })
-        
-        if (ingredients?.length > 0) {
-            const ingredientsInsert = ingredients.map(ingredient => {
-                return {
-                    dish_id,
-                    name: ingredient,
-                    user_id
-                }
-            })
-            await knex("ingredients").insert(ingredientsInsert)
-        }
-        return res.status(201).json({ dish_id })
+        return res.status(201).json(newDish)
     }
 
     async index(req, res) {
-        const { title, ingredients } = req.query
+        const dishes = await Dish.find()
 
-        let dishes
-
-        if (ingredients && title) {
-            const filterIngredients = ingredients.split(',').map(ingredients => ingredients.trim())
-
-            dishes = await knex("dishes")
-                .innerJoin('ingredients', 'dishes.id', 'ingredients.dish_id')
-                .whereLike("dishes.name", `%${title}%`)
-                .whereIn('ingredients.name', filterIngredients)
-                .groupBy('dishes.id')
-                .select('dishes.*')
-
-        } else if (title) {
-            dishes = await knex("dishes")
-                .whereLike("name", `%${title}%`)
-        } else {
-            dishes = await knex("dishes")
-        }
-
-        const fetchIngredients = await knex("ingredients")
-
-        const dishesWithIngredients = dishes.map(dish => {
-            const dishIngredients = fetchIngredients.filter(fetchIngredient => fetchIngredient.dish_id === dish.id);
-
-            return {
-                ...dish,
-                ingredients: dishIngredients
-            }
-        })
-
-        return res.json(dishesWithIngredients)
+        return res.json(dishes)
     }
 
     async show(req, res) {
         const dish_id = req.params.id
 
-        const dish = await knex("dishes").where({ id: dish_id }).first()
+        if (!mongoose.Types.ObjectId.isValid(dish_id)) throw new AppError('Prato não encontrado', 404)
 
-        if (!dish) {
-            throw new AppError('Prato não encontrado', 404)
-        }
+        const dish = await Dish.findById(dish_id)
 
-        const ingredients = await knex("ingredients").where({ dish_id })
-
-        dish.ingredients = ingredients
+        if (!dish) throw new AppError('Prato não encontrado', 404)
 
         return res.json(dish)
     }
 
     async update(req, res) {
-
-        const user_id = req.user.id
         const dish_id = req.params.id
+
+        if (!mongoose.Types.ObjectId.isValid(dish_id)) throw new AppError('Prato não encontrado', 404)
 
         const { name, category: category_id, ingredients, price, description } = req.body
 
@@ -102,62 +58,42 @@ class DishesController {
             throw new AppError('Todos os campos são obrigatórios', 404)
         }
 
-        const dish = await knex("dishes").where({ id: dish_id }).first()
+        const dish = await Dish.findOne({ _id: dish_id })
 
         if (!dish) {
             throw new AppError('Prato não encontrado', 404)
         }
 
-        const checkCategoryExists = await knex("categories").where({id: category_id})
+        if (!mongoose.Types.ObjectId.isValid(String(category_id))) throw new AppError('Categoria inválida', 404)
+        const checkCategoryExists = await Category.findById(category_id)
 
-        if(checkCategoryExists.length == 0){
+        if (!checkCategoryExists) {
             throw new AppError('Esta categoria não existe', 404)
         }
 
-        dish.name = name ?? dish.name
-        dish.category_id = category_id ?? dish.category_id
-        dish.price = price ?? dish.price
-        dish.description = description ?? dish.description
+        dish.name = name
+        dish.category = category_id
+        dish.ingredients = ingredients
+        dish.price = price
+        dish.description = description
 
-        const old_ingredients = await knex("ingredients").where({ dish_id })
-        const old_ingredients_names = old_ingredients.map(old_ingredient => old_ingredient.name)
-
-        const ingredientsToAdd = ingredients.filter(ingredient => !old_ingredients_names.includes(ingredient))
-
-        const ingredientsToRemove = old_ingredients_names.filter(old_ingredient => !ingredients.includes(old_ingredient))
-
-        if (ingredientsToAdd.length > 0) {
-            await knex("ingredients").insert(ingredientsToAdd.map(ingredient => {
-                return {
-                    dish_id,
-                    name: ingredient,
-                    user_id
-                }
-            }))
-        }
-
-        if (ingredientsToRemove.length > 0) {
-            await knex("ingredients").where({ dish_id }).whereIn('name', ingredientsToRemove).delete()
-        }
-
-        await knex("dishes").where({ id: dish_id }).update(dish)
+        delete dish._id
+        console.log(dish)
+        await Dish.updateOne({ _id: dish_id }, dish)
 
         return res.json()
     }
 
     async delete(req, res) {
-
         const dish_id = req.params.id
 
-        const dish = await knex("dishes").where({ id: dish_id }).first()
+        const dish = await Dish.findOne({ _id: dish_id })
 
         if (!dish) {
             throw new AppError('Prato não encontrado', 404)
         }
 
-        await knex("ingredients").where({ dish_id }).delete()
-
-        await knex("dishes").where({ id: dish_id }).delete()
+        const deleted = await Dish.deleteOne({ _id: dish_id })
 
         return res.status(204).send()
     }

@@ -1,4 +1,4 @@
-const knex = require('../database/knex')
+const Category = require('../models/Category')
 
 const AppError = require('../utils/AppError')
 
@@ -10,14 +10,14 @@ class CategoriesController {
             throw new AppError('O nome da categoria é obrigatório.', 400)
         }
 
-        const checkCategoryNameIsUsed = await knex('categories').where({ name }).first()
+        const checkCategoryNameIsUsed = await Category.findOne({ name })
 
         if (checkCategoryNameIsUsed) {
             throw new AppError('Já existe uma categoria com este nome.', 409)
         }
 
         try {
-            await knex('categories').insert({ name })
+            await Category.create({ name })
         }
         catch (e) {
             console.error(e)
@@ -29,9 +29,8 @@ class CategoriesController {
 
     async delete(req, res) {
         const { id } = req.params
-
         try {
-            await knex('categories').where({ id }).delete()
+            await Category.deleteOne({ id })
         }
         catch (e) {
             throw new AppError('Esta categoria não existe.', 404)
@@ -48,26 +47,26 @@ class CategoriesController {
             throw new AppError('O nome da categoria é obrigatório.', 400)
         }
 
-        const checkCategoryNameIsUsed = await knex('categories').where({ name })
+        const checkCategoryNameIsUsed = await Category.find({ name })
 
-        if (checkCategoryNameIsUsed.length > 0 && checkCategoryNameIsUsed.some(category => category.id != id) ) {
+        if (checkCategoryNameIsUsed.length > 0 && checkCategoryNameIsUsed.some(category => category.id != id)) {
             throw new AppError('Já existe uma categoria com este nome.', 409)
         }
 
-        await knex('categories').update({ name }).where({id})
+        const CategoryUptaded = await Category.updateOne({ id }, { name })
+        console.log(CategoryUptaded)
 
         res.json()
     }
 
     async index(req, res) {
-        const categories = await knex('categories')//.where({ user_id: req.user.id })
+        const categories = await Category.find()
         return res.json(categories)
     }
 
     async show(req, res) {
         const { id } = req.params
-
-        const category = await knex('categories').where({ id }).first()
+        const category = await Category.findById(id)
 
         return res.json(category)
     }

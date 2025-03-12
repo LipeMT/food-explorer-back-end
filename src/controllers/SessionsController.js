@@ -1,16 +1,16 @@
-const knex = require('../database/knex')
 const AppError = require('../utils/AppError')
 const { compare } = require('bcryptjs')
 
 const authConfig = require('../configs/auth')
 
 const { sign } = require('jsonwebtoken')
+const User = require('../models/User')
 
 class SessionsController {
     async create(req, res) {
-        const { email, password, name } = req.body
+        const { email, password } = req.body
 
-        const user = await knex('users').where({ email }).first()   
+        const user = await User.findOne({ email })
 
         if (!user) {
             throw new AppError("Email e/ou senha incorreta", 401)
@@ -26,8 +26,8 @@ class SessionsController {
 
         const { expiresIn, secret } = authConfig.jwt
 
-        const token = sign({role: user.role}, secret, {
-            subject: String(user.id),
+        const token = sign({ role: user.role }, secret, {
+            subject: String(user._id),
             expiresIn,
         })
 
@@ -35,13 +35,13 @@ class SessionsController {
             httpOnly: true,
             sameSite: "none",
             secure: true,
-            maxAge: 150 * 60 *1000,
+            maxAge: 150 * 60 * 1000,
         })
 
         return res.status(201).json({ user })
     }
 
-    async delete(req, res){
+    async delete(req, res) {
         res.clearCookie("token");
         return res.status(204).send();
     }

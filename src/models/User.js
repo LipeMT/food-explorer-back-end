@@ -7,6 +7,7 @@ const UserSchema = new Schema(
     email: { type: String, required: true },
     password: { type: String, required: true },
     avatar: { type: String },
+    restaurants: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }],
     role: {
       type: String,
       required: true,

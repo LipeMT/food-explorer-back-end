@@ -7,11 +7,13 @@ const dishesRoutes = Router()
 const DishesController = require('../controllers/DishesController')
 const DishImageController = require('../controllers/DishImageController')
 const ensureAuthenticated = require('../middlewares/ensureAuthenticated')
+const restaurantMiddleware = require('../middlewares/restaurantMiddleware')
 
 const dishesController = new DishesController()
 const dishImageController = new DishImageController()
 
 dishesRoutes.use(ensureAuthenticated)
+dishesRoutes.use(restaurantMiddleware)
 const upload = multer(uploadConfig.MULTER)
 
 dishesRoutes.post('/', dishesController.create)

@@ -5,6 +5,7 @@ const AppError = require('../utils/AppError')
 class CategoriesController {
     async create(req, res) {
         const { name } = req.body
+        const { restaurant_id } = req
 
         if (!name) {
             throw new AppError('O nome da categoria é obrigatório.', 400)
@@ -17,7 +18,7 @@ class CategoriesController {
         }
 
         try {
-            await Category.create({ name })
+            await Category.create({ name, restaurant: restaurant_id })
         }
         catch (e) {
             console.error(e)
@@ -54,7 +55,6 @@ class CategoriesController {
         }
 
         const CategoryUptaded = await Category.updateOne({ id }, { name })
-        console.log(CategoryUptaded)
 
         res.json()
     }

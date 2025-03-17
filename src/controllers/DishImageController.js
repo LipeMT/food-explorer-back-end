@@ -10,7 +10,7 @@ class DishImageController {
 
         const diskStorage = new DiskStorage()
 
-        const dish = await Dish.findOne({ id: dish_id })
+        const dish = await Dish.findOne({ _id: dish_id })
 
         if (!dish) {
             throw new AppError("Prato não encontrado", 404)
@@ -23,10 +23,8 @@ class DishImageController {
         const filename = await diskStorage.saveFile(avatarFileName)
 
         dish.image = filename
-
-        delete dish._id
-        // await knex("dishes").where({ id: dish_id }).update(dish)
-        await Dish.updateOne({ id: dish }, dish)
+        
+        await Dish.updateOne({ _id: dish_id }, dish)
 
         res.json(dish)
     }

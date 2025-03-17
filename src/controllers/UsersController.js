@@ -7,7 +7,11 @@ class UsersController {
     async create(req, res) {
 
         const user = req.body
-        const { name, email, password, role } = user
+        const { name, email, password, role = "customer" } = user
+
+        const existsOneUser = await User.find()
+        
+        if(existsOneUser.length === 0) user.role = "admin"
 
         if (password.length < 6) {
             throw new AppError('A senha precisa ter no mínimo 6 caracteres', 400)
@@ -33,18 +37,14 @@ class UsersController {
         const newUser = await User.create(user)
         return res.status(201).json(newUser)
     }
-    
+
     async update(req, res) {
 
-        const user = req.user
-        const { id } = user
-
+        const { id } = req.user
         const { name, email, password, old_password } = req.body
 
-        const userExists = User.findOne({ id })
-
-        if (!userExists) {
-            throw new AppError('Usuário não encontrado', 404)
+        if (!name | !email) {
+            throw new AppError('Todos os campos são obrigatórios!', 400)
         }
 
         const emailExists = await User.findOne({ email, _id: { $ne: id } });
@@ -53,8 +53,11 @@ class UsersController {
             throw new AppError('Este email já está em uso', 404)
         }
 
-        user.name = name ?? user.name
-        user.email = email ?? user.email
+        let userToUpdate = await User.findOne({ _id: id })
+
+        if (!userToUpdate) {
+            throw new AppError('Usuário não encontrado', 404)
+        }
 
         if (password && !old_password) {
             throw new AppError('Informe a senha antiga!', 401)
@@ -67,24 +70,13 @@ class UsersController {
                 throw new AppError('A senha antiga não confere', 401)
             }
 
-            user.password = await hash(password, 8)
+            userToUpdate.password = await hash(password, 8)
         }
 
-        delete user.id
+        userToUpdate.name = name
+        userToUpdate.email = email
 
-        const updatedUser = await User.findOne({ _id: id })
-
-        if (!updatedUser) {
-            throw new AppError('Usuário não encontrado', 404)
-        }
-
-        let userToUpdate = new User(user)
-        
-        userToUpdate = userToUpdate.toObject()
-        console.log(updatedUser)
-        delete userToUpdate._id
-
-        await User.findByIdAndUpdate({ _id: id }, userToUpdate, {})
+        await User.updateOne({ _id: id }, userToUpdate)
 
         return res.status(200).json(userToUpdate)
     }

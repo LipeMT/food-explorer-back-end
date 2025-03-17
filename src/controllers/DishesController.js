@@ -5,11 +5,11 @@ const AppError = require('../utils/AppError')
 
 class DishesController {
     async create(req, res) {
-        const { name, category: category_id, ingredients, price, description } = req.body
+        const { name, category, ingredients, price, description, image } = req.body
+        const { restaurant_id } = req
 
-        const user_id = req.user.id
 
-        if (!name || !category_id || !price || !description) {
+        if (!name || !category || !price || !description) {
             throw new AppError('Todos os campos são obrigatórios', 400)
         }
 
@@ -19,12 +19,12 @@ class DishesController {
             throw new AppError('Já existe um prato com este nome', 409)
         }
 
-        const checkCategoryExists = await Category.findOne({ _id: category_id })
+        const checkCategoryExists = await Category.findOne({ _id: category })
 
         if (!checkCategoryExists) {
             throw new AppError('Esta categoria não existe', 404)
         }
-        const newDish = await Dish.create({ name, price, description, ingredients, user_id, category_id })
+        const newDish = await Dish.create({ name, price, description, ingredients, category: checkCategoryExists._id, restaurant: restaurant_id })
 
         return res.status(201).json(newDish)
     }
@@ -78,7 +78,6 @@ class DishesController {
         dish.description = description
 
         delete dish._id
-        console.log(dish)
         await Dish.updateOne({ _id: dish_id }, dish)
 
         return res.json()
@@ -93,7 +92,7 @@ class DishesController {
             throw new AppError('Prato não encontrado', 404)
         }
 
-        const deleted = await Dish.deleteOne({ _id: dish_id })
+        await Dish.deleteOne({ _id: dish_id })
 
         return res.status(204).send()
     }

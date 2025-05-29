@@ -6,6 +6,7 @@ const restaurantsAccessController = new RestaurantsAccessController()
 
 const ensureAuthenticated = require('../middlewares/ensureAuthenticated')
 
+restaurantsAccessRouter.use(ensureAuthenticated)
 restaurantsAccessRouter.post('/', restaurantsAccessController.create)
 restaurantsAccessRouter.delete('/', restaurantsAccessController.delete)
 

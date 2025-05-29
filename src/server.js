@@ -27,6 +27,10 @@ app.use(cors({
 
 app.use(routes)
 
+app.get('/', (req, res) => {
+    return res.json({ message: "API is running!" })
+})
+
 app.use((error, req, res, next) => {
     if (error instanceof AppError) {
         return res.status(error.statusCode).json({

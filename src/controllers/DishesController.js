@@ -6,14 +6,13 @@ const AppError = require('../utils/AppError')
 class DishesController {
     async create(req, res) {
         const { name, category, ingredients, price, description, image } = req.body
-        const { restaurant_id } = req
-
+        const restaurant_id = req.restaurant_id
 
         if (!name || !category || !price || !description) {
             throw new AppError('Todos os campos são obrigatórios', 400)
         }
 
-        const checkDishNameIsUsed = await Dish.findOne({ name })
+        const checkDishNameIsUsed = await Dish.findOne({ name, restaurant: restaurant_id })
 
         if (checkDishNameIsUsed) {
             throw new AppError('Já existe um prato com este nome', 409)
@@ -30,17 +29,25 @@ class DishesController {
     }
 
     async index(req, res) {
-        const dishes = await Dish.find()
+        const restaurant = req.restaurant_id
+        if (!restaurant) throw new AppError('Restaurante não informado', 401)
 
-        return res.json(dishes)
+        try {
+            const dishes = await Dish.find({ restaurant })
+            return res.json(dishes)
+        } catch (error) {
+            throw new AppError('Erro ao buscar pratos', 400)
+        }
+
     }
 
     async show(req, res) {
         const dish_id = req.params.id
+        const { restaurant_id } = req
 
         if (!mongoose.Types.ObjectId.isValid(dish_id)) throw new AppError('Prato não encontrado', 404)
 
-        const dish = await Dish.findById(dish_id)
+        const dish = await Dish.findOne({ _id: dish_id, restaurant: restaurant_id })
 
         if (!dish) throw new AppError('Prato não encontrado', 404)
 
@@ -49,6 +56,7 @@ class DishesController {
 
     async update(req, res) {
         const dish_id = req.params.id
+        const { restaurant_id } = req
 
         if (!mongoose.Types.ObjectId.isValid(dish_id)) throw new AppError('Prato não encontrado', 404)
 
@@ -58,7 +66,11 @@ class DishesController {
             throw new AppError('Todos os campos são obrigatórios', 404)
         }
 
-        const dish = await Dish.findOne({ _id: dish_id })
+        const dishNameIsUsed = await Dish.findOne({ name, restaurant: restaurant_id, _id: { $ne: dish_id } });
+
+        if (dishNameIsUsed) throw new AppError('Já existe um prato com esse nome')
+
+        const dish = await Dish.findOne({ _id: dish_id, restaurant: restaurant_id })
 
         if (!dish) {
             throw new AppError('Prato não encontrado', 404)

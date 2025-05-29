@@ -11,9 +11,19 @@ class RestaurantsAccessController {
 
     if (!restaurant) { throw new AppError('Restaurante não encontrado!', 400) }
 
-    req.session.restaurant_id = restaurant_id
+    res.cookie('restaurant_id', restaurant_id, {
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    })
 
-    return res.json()
+    return res.json(restaurant_id)
+  }
+
+  async delete(req, res) {
+    res.clearCookie('restaurant_id')
+    return res.status(204).send();
   }
 }
 

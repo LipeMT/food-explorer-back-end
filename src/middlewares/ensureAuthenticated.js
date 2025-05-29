@@ -9,19 +9,21 @@ function ensureAuthenticated(request, response, next) {
     throw new AppError('JWT token não informado', 401);
   }
 
-  const [, token] = authHeader.cookie.split('token=');
-
   try {
+    let separatedCookies = authHeader.cookie.split(' ')
+    separatedCookies = separatedCookies.find(cookie => cookie.includes('token'))
+    let [, token] = separatedCookies.split('token=');
+    token = token.split(';')[0]
+      
     const { sub: user_id, role } = verify(token, authConfig.jwt.secret);
 
     request.user = {
       id: user_id,
       role
     };
-
     return next();
   } catch {
-    throw new AppError('Invalid JWT token', 401);
+    throw new AppError('Token de autenticação inválido', 401);
   }
 }
 

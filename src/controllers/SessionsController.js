@@ -43,6 +43,7 @@ class SessionsController {
 
     async delete(req, res) {
         res.clearCookie("token");
+        res.clearCookie('restaurant_id')
         return res.status(204).send();
     }
 }

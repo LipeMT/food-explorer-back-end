@@ -1,4 +1,5 @@
 const Category = require('../models/Category')
+const Dish = require('../models/Dish')
 
 const AppError = require('../utils/AppError')
 
@@ -7,11 +8,15 @@ class CategoriesController {
         const { name } = req.body
         const { restaurant_id } = req
 
+        if (!restaurant_id) {
+            throw new AppError('Restaurante não informado', 401)
+        }
+
         if (!name) {
             throw new AppError('O nome da categoria é obrigatório.', 400)
         }
 
-        const checkCategoryNameIsUsed = await Category.findOne({ name })
+        const checkCategoryNameIsUsed = await Category.findOne({ name, restaurant: restaurant_id })
 
         if (checkCategoryNameIsUsed) {
             throw new AppError('Já existe uma categoria com este nome.', 409)
@@ -30,14 +35,15 @@ class CategoriesController {
 
     async delete(req, res) {
         const { id } = req.params
+        const { restaurant_id } = req
         try {
-            await Category.deleteOne({ id })
+            await Category.deleteOne({ _id: id, restaurant: restaurant_id })    
+            await Dish.deleteMany({ category: id })
+            return res.status(204).json()
         }
         catch (e) {
             throw new AppError('Esta categoria não existe.', 404)
         }
-
-        return res.json()
     }
 
     async update(req, res) {
@@ -60,8 +66,17 @@ class CategoriesController {
     }
 
     async index(req, res) {
-        const categories = await Category.find()
-        return res.json(categories)
+        const restaurant = req.restaurant_id
+        if (!restaurant) throw new AppError('Restaurante não informado', 401)
+
+        try {
+            const categories = await Category.find({ restaurant })
+            return res.json(categories)
+
+        } catch (e) {
+            // console.log(e)
+            throw new AppError('Erro ao buscar categorias', 500)
+        }
     }
 
     async show(req, res) {

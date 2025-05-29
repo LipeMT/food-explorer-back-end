@@ -5,13 +5,12 @@ const AppError = require('../utils/AppError')
 
 class UsersController {
     async create(req, res) {
-
         const user = req.body
         const { name, email, password, role = "customer" } = user
 
         const existsOneUser = await User.find()
-        
-        if(existsOneUser.length === 0) user.role = "admin"
+
+        if (existsOneUser.length === 0) user.role = "admin"
 
         if (password.length < 6) {
             throw new AppError('A senha precisa ter no mínimo 6 caracteres', 400)
@@ -22,7 +21,7 @@ class UsersController {
         }
 
         if (!name || !email || !password) {
-            throw new AppError('Email e/ou senha incorreto(a)', 401)
+            throw new AppError('Todos os campos são obrigatórios!', 401)
         }
 
         const userExists = await User.findOne({ email })
@@ -79,6 +78,17 @@ class UsersController {
         await User.updateOne({ _id: id }, userToUpdate)
 
         return res.status(200).json(userToUpdate)
+    }
+
+    async delete(req, res) {
+        const { id } = req.params
+        if (!id) throw new AppError('Usuário inválido!', 400)
+        try {
+            await User.findByIdAndDelete(id)
+            return res.json()
+        } catch (error) {
+            throw new AppError('Não foi possível remover o usuário!')
+        }
     }
 }
 

@@ -7,6 +7,7 @@ const dishesRoutes = require('./dishes.routes')
 const categoriesRoutes = require('./categories.routes')
 const ordersRouter = require('./orders.routes')
 const restaurantsRouter = require('./restaurants.routes')
+const restaurantsAccessRouter = require('./restaurantsAccess.routes')
 
 const routes = Router()
 
@@ -22,5 +23,6 @@ routes.use('/dishes', dishesRoutes)
 routes.use('/categories', categoriesRoutes)
 routes.use('/orders', ordersRouter)
 routes.use('/restaurants', restaurantsRouter)
+routes.use('/restaurants-access', restaurantsAccessRouter)
 
 module.exports = routes
